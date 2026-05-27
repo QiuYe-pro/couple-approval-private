@@ -23,8 +23,9 @@ type RequestItem = {
 const KEY = "couple:requests:v1";
 
 function getRedis() {
-  const url = process.env.UPSTASH_REDIS_REST_URL || "";
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || "";
+  // Vercel/Upstash integrations may expose different env var names.
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || "";
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || "";
   // Fail-closed: without Redis config, API cannot serve data.
   if (!url || !token) throw new Error("Redis not configured");
   return new Redis({ url, token });
