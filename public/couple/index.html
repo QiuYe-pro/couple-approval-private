@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>我们的小申请系统</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="container header-inner">
+        <div>
+          <h1 class="title">我们的小申请系统</h1>
+          <p class="subtitle">两个人的小流程：提交 → 审批 → 记录</p>
+        </div>
+        <div class="whoami">
+          <label for="currentUser" class="label">当前身份</label>
+          <select id="currentUser" class="select" aria-label="当前身份选择">
+            <option value="A">我</option>
+            <option value="B">TA</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <div class="card-header">
+          <h2>新建申请</h2>
+          <p class="muted" id="formModeHint">提交后将进入“待审批”。审批人 = 另一方。</p>
+        </div>
+
+        <form id="requestForm" class="form" novalidate>
+          <input id="editingRequestId" name="editingRequestId" type="hidden" value="" />
+
+          <div class="grid2">
+            <div class="field">
+              <label class="label" for="title">申请事项</label>
+              <input
+                id="title"
+                name="title"
+                class="input"
+                type="text"
+                placeholder="例如：周末一起看电影 / 申请报销奶茶预算"
+                maxlength="60"
+                required
+              />
+              <div class="help">最多 60 字</div>
+            </div>
+            <div class="field">
+              <label class="label" for="category">申请类型（可选）</label>
+              <input
+                id="category"
+                name="category"
+                class="input"
+                type="text"
+                placeholder="例如：约会 / 预算 / 家务 / 旅行"
+                maxlength="20"
+              />
+              <div class="help">用于筛选和回顾</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="description">申请说明（可选）</label>
+            <textarea
+              id="description"
+              name="description"
+              class="textarea"
+              rows="3"
+              placeholder="把想法写清楚一点：原因、预算、你期待的结果……"
+              maxlength="500"
+            ></textarea>
+            <div class="help">最多 500 字</div>
+          </div>
+
+          <div class="grid3">
+            <div class="field">
+              <label class="label" for="applyAt">申请时间</label>
+              <input id="applyAt" name="applyAt" class="input" type="datetime-local" required />
+            </div>
+            <div class="field">
+              <label class="label" for="executeAt">事项实施时间</label>
+              <input id="executeAt" name="executeAt" class="input" type="datetime-local" required />
+            </div>
+            <div class="field">
+              <label class="label" for="priority">优先级（可选）</label>
+              <select id="priority" name="priority" class="select">
+                <option value="normal" selected>普通</option>
+                <option value="high">重要</option>
+                <option value="urgent">紧急</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-primary" type="submit" id="submitBtn">提交申请</button>
+            <button class="btn btn-ghost" type="button" id="resetForm">清空</button>
+          </div>
+          <div id="formError" class="error" role="alert" aria-live="polite"></div>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="card-header header-row">
+          <div>
+            <h2>申请列表</h2>
+            <p class="muted">你可以查看自己提交的，也可以审批对方提交的。</p>
+          </div>
+          <div class="toolbar">
+            <div class="field compact">
+              <label class="label" for="filterStatus">状态</label>
+              <select id="filterStatus" class="select">
+                <option value="all" selected>全部</option>
+                <option value="pending">待审批</option>
+                <option value="returned">打回修改</option>
+                <option value="approved">已同意</option>
+                <option value="rejected">已驳回</option>
+                <option value="cancelled">已撤回</option>
+              </select>
+            </div>
+            <div class="field compact">
+              <label class="label" for="filterMine">视角</label>
+              <select id="filterMine" class="select">
+                <option value="all" selected>全部</option>
+                <option value="mine">我提交的</option>
+                <option value="toApprove">待我审批的</option>
+              </select>
+            </div>
+            <button class="btn btn-ghost" id="exportData" type="button" title="导出为 JSON">导出</button>
+            <label class="btn btn-ghost file-btn" title="导入 JSON（会合并）">
+              导入
+              <input id="importData" type="file" accept="application/json" />
+            </label>
+          </div>
+        </div>
+
+        <div id="listEmpty" class="empty">暂无申请。先提交一条吧。</div>
+        <div id="requestList" class="list" aria-live="polite"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-header header-row">
+          <div>
+            <h2>双方设置</h2>
+            <p class="muted">仅用于展示称呼；不涉及账号与联网。</p>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label class="label" for="nameA">“我”的称呼</label>
+            <input id="nameA" class="input" type="text" maxlength="20" placeholder="例如：秋叶" />
+          </div>
+          <div class="field">
+            <label class="label" for="nameB">“TA”的称呼</label>
+            <input id="nameB" class="input" type="text" maxlength="20" placeholder="例如：Yael" />
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" id="saveNames" type="button">保存称呼</button>
+          <button class="btn btn-danger" id="wipeAll" type="button" title="清空所有数据">清空全部数据</button>
+        </div>
+        <div class="help">提示：数据保存在当前浏览器的 localStorage。换设备/换浏览器不会同步。</div>
+      </section>
+    </main>
+
+    <dialog id="detailDialog" class="dialog">
+      <form method="dialog" class="dialog-inner">
+        <div class="dialog-head">
+          <div>
+            <div id="detailTitle" class="dialog-title">申请详情</div>
+            <div id="detailMeta" class="dialog-meta muted"></div>
+          </div>
+          <button class="icon-btn" value="cancel" aria-label="关闭">✕</button>
+        </div>
+
+        <div class="dialog-body">
+          <div class="kv">
+            <div class="k">申请事项</div>
+            <div class="v" id="d_title"></div>
+          </div>
+          <div class="kv">
+            <div class="k">类型</div>
+            <div class="v" id="d_category"></div>
+          </div>
+          <div class="kv">
+            <div class="k">申请说明</div>
+            <div class="v pre" id="d_description"></div>
+          </div>
+          <div class="grid2">
+            <div class="kv">
+              <div class="k">申请时间</div>
+              <div class="v" id="d_applyAt"></div>
+            </div>
+            <div class="kv">
+              <div class="k">实施时间</div>
+              <div class="v" id="d_executeAt"></div>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="kv">
+              <div class="k">申请人</div>
+              <div class="v" id="d_applicant"></div>
+            </div>
+            <div class="kv">
+              <div class="k">审批人</div>
+              <div class="v" id="d_approver"></div>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="kv">
+              <div class="k">状态</div>
+              <div class="v" id="d_status"></div>
+            </div>
+            <div class="kv">
+              <div class="k">优先级</div>
+              <div class="v" id="d_priority"></div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="section-title">审批记录</div>
+          <div id="d_timeline" class="timeline"></div>
+
+          <div id="approvalPanel" class="panel">
+            <div class="section-title">当前审批操作</div>
+            <div class="field">
+              <label class="label" for="approveComment">审批意见（可选）</label>
+              <textarea
+                id="approveComment"
+                class="textarea"
+                rows="3"
+                maxlength="300"
+                placeholder="例如：同意，但请控制预算在 50 以内"
+              ></textarea>
+              <div class="help">最多 300 字</div>
+            </div>
+            <div class="actions">
+              <button id="btnApprove" class="btn btn-primary" type="button">同意</button>
+              <button id="btnReject" class="btn btn-danger" type="button">驳回</button>
+              <button id="btnReturn" class="btn btn-warn" type="button">打回修改</button>
+            </div>
+            <div id="approvalError" class="error" role="alert" aria-live="polite"></div>
+          </div>
+
+          <div id="editPanel" class="panel">
+            <div class="section-title">按“打回修改”意见修改后重新提交</div>
+            <div class="actions">
+              <button id="btnEdit" class="btn btn-primary" type="button">进入修改</button>
+              <button id="btnCancelReq" class="btn btn-ghost" type="button">撤回申请</button>
+            </div>
+            <div id="editHint" class="help"></div>
+            <div id="editError" class="error" role="alert" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <menu class="dialog-foot">
+          <button class="btn" value="cancel">关闭</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+    <script src="./bootstrap.js"></script>
+  </body>
+</html>
