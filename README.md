@@ -19,7 +19,14 @@
 
 ### Vercel KV（必须）
 
-创建一个 Vercel KV 数据库后，将其环境变量绑定到项目（Vercel 通常会自动帮你注入 `KV_*` 变量；如果没有，需要把 KV 的环境变量全部加到本项目）。
+### Redis（必须，Upstash）
+
+`@vercel/kv` 已弃用，本项目改用 **Upstash Redis（REST）**。
+
+在 Vercel → Marketplace 安装并绑定一个 Redis（Upstash）后，给项目注入下面两个环境变量：
+
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
 
 ## 入口
 

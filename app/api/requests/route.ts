@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
 
 type UserId = "A" | "B";
 
@@ -22,6 +22,14 @@ type RequestItem = {
 
 const KEY = "couple:requests:v1";
 
+function getRedis() {
+  const url = process.env.UPSTASH_REDIS_REST_URL || "";
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || "";
+  // Fail-closed: without Redis config, API cannot serve data.
+  if (!url || !token) throw new Error("Redis not configured");
+  return new Redis({ url, token });
+}
+
 function getSessionUser(req: NextRequest): UserId | null {
   const v = req.cookies.get("couple_session")?.value;
   return v === "A" || v === "B" ? v : null;
@@ -32,18 +40,24 @@ function json(data: unknown, init?: ResponseInit) {
 }
 
 async function loadAll(): Promise<RequestItem[]> {
-  const arr = (await kv.get<RequestItem[]>(KEY)) || [];
+  const redis = getRedis();
+  const arr = (await redis.get<RequestItem[]>(KEY)) || [];
   return Array.isArray(arr) ? arr : [];
 }
 
 async function saveAll(items: RequestItem[]) {
-  await kv.set(KEY, items);
+  const redis = getRedis();
+  await redis.set(KEY, items);
 }
 
 export async function GET() {
-  const items = await loadAll();
-  // public read: anyone can view
-  return json({ ok: true, items });
+  try {
+    const items = await loadAll();
+    // public read: anyone can view
+    return json({ ok: true, items });
+  } catch (e: any) {
+    return json({ ok: false, error: e?.message || "Server error" }, { status: 503 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -70,9 +84,13 @@ export async function POST(req: NextRequest) {
   if (exists) return json({ ok: false, error: "Already exists" }, { status: 409 });
   if (item.applicantId !== userId) return json({ ok: false, error: "Applicant mismatch" }, { status: 403 });
 
-  all.push(item);
-  await saveAll(all);
-  return json({ ok: true });
+  try {
+    all.push(item);
+    await saveAll(all);
+    return json({ ok: true });
+  } catch (e: any) {
+    return json({ ok: false, error: e?.message || "Server error" }, { status: 503 });
+  }
 }
 
 export async function PUT(req: NextRequest) {
@@ -89,7 +107,12 @@ export async function PUT(req: NextRequest) {
   const item = body?.item as RequestItem | undefined;
   if (!item?.id) return json({ ok: false, error: "Invalid payload" }, { status: 400 });
 
-  const all = await loadAll();
+  let all: RequestItem[] = [];
+  try {
+    all = await loadAll();
+  } catch (e: any) {
+    return json({ ok: false, error: e?.message || "Server error" }, { status: 503 });
+  }
   const idx = all.findIndex((x) => x.id === item.id);
   if (idx < 0) return json({ ok: false, error: "Not found" }, { status: 404 });
 
@@ -102,8 +125,11 @@ export async function PUT(req: NextRequest) {
   const approverWrite = cur.approverId === userId && cur.status === "pending";
   if (!applicantWrite && !approverWrite) return json({ ok: false, error: "Forbidden" }, { status: 403 });
 
-  all[idx] = item;
-  await saveAll(all);
-  return json({ ok: true });
+  try {
+    all[idx] = item;
+    await saveAll(all);
+    return json({ ok: true });
+  } catch (e: any) {
+    return json({ ok: false, error: e?.message || "Server error" }, { status: 503 });
+  }
 }
-
